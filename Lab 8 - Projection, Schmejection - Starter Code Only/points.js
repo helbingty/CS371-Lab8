@@ -19,6 +19,8 @@ class Points {
 
         this.recalculatePointsNDC(projMat); // in case points have been added to points3D
 
+        gl.clear(gl.COLOR_BUFFER_BIT); // erase stale points from the previous render
+
         const aPositionLocation = gl.getAttribLocation(program, 'aPosition');
         const vertexBuffer = gl.createBuffer();       // one buffer for the vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer); // 
@@ -38,18 +40,25 @@ class Points {
         this.points3DInsideViewVolume = [];
 
         for (let j = 0; j < this.points3D.length; j += 3) {
-            let x = this.points3D[j];
-            let y = this.points3D[j + 1];
-            let z = this.points3D[j + 2];
-
-            // TODO:
             // 1. Represent this point in homogeneous coordinates.
+            const p = glMatrix.vec4.fromValues(
+                this.points3D[j], this.points3D[j + 1], this.points3D[j + 2], 1);
+
             // 2. Apply projMat to obtain clip coordinates.
+            const clip = glMatrix.vec4.transformMat4(glMatrix.vec4.create(), p, projMat);
+
             // 3. Perform the perspective division to obtain NDC.
-            // 4. Append a Boolean to points3DInsideViewVolume indicating
-            //    whether all three NDC coordinates are within [-1, 1].
-            // 5. Append the NDC x, y, and z coordinates to pointsNDC,
-            //    regardless of whether the point is visible.
+            const w = clip[3];
+            const xNDC = clip[0] / w;
+            const yNDC = clip[1] / w;
+            const zNDC = clip[2] / w;
+
+            // 4. Append a Boolean indicating whether all three NDC coordinates are in [-1, 1].
+            const inside = [xNDC, yNDC, zNDC].every(v => v >= -1 && v <= 1);
+            this.points3DInsideViewVolume.push(inside);
+
+            // 5. Append the NDC coordinates, regardless of visibility.
+            this.pointsNDC.push(xNDC, yNDC, zNDC);
         }
     }
 

@@ -1,3 +1,13 @@
+/*
+ * Name: Your Name
+ * Date: 11/__/2026
+ * Description: Lab 8 - Projection, Schmojection. Builds a perspective projection
+ *              matrix from user-supplied viewing volume bounds, converts 3D points
+ *              to NDC, and reports which points fall inside the viewing volume.
+ * Bugs: None known.
+ * Reflection: See README.md
+ */
+
 "use strict";
 
 // @ts-check
@@ -13,6 +23,10 @@ let program;
 
 let points = new Points();
 let projMat;
+
+// Original state, used by the Reset button
+const DEFAULT_BOUNDS = [-4, 4, -3, 3, 1, 10]; // left, right, bottom, top, near, far
+const DEFAULT_POINTS = [2, 1, -3, 1, 2, -5];
 
 
 let bounds = [
@@ -49,6 +63,7 @@ function initScene() {
     };
 
     document.getElementById('addPointBTN').addEventListener('click', () => addPoint(xINP.valueAsNumber, yINP.valueAsNumber, zINP.valueAsNumber));
+    document.getElementById('resetBTN').addEventListener('click', resetScene);
 
     gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
     recalculateProjMat(leftINP.valueAsNumber, rightINP.valueAsNumber, bottomINP.valueAsNumber, topINP.valueAsNumber, nearINP.valueAsNumber, farINP.valueAsNumber);
@@ -56,15 +71,31 @@ function initScene() {
     drawTable();
 }
 
+// Perspective projection matrix for the frustum (l, r, b, t, n, f).
+// mat4.fromValues is column-major, so each row below is one COLUMN of the matrix.
 function recalculateProjMat(l, r, b, t, n, f) {
-    projMat = [
-        (2*n) / (r - l), 0, (r + l) / (r - l), 0,
-        0, (2 * n) / (t - b), 
-    ]; // fix this to build a projection matrix for perspective projection
+    projMat = mat4.fromValues(
+        (2 * n) / (r - l), 0, 0, 0,                                      // column 0
+        0, (2 * n) / (t - b), 0, 0,                                      // column 1
+        (r + l) / (r - l), (t + b) / (t - b), -(f + n) / (f - n), -1,    // column 2
+        0, 0, (-2 * f * n) / (f - n), 0                                  // column 3
+    );
 }
 
 function addPoint(x, y, z) {
     points.points3D.push(x, y, z); // add points to the array
+    points.render(projMat);
+    drawTable();
+}
+
+// Restores the viewing volume inputs and the two original points
+function resetScene() {
+    for (let i = 0; i < bounds.length; i++) {
+        bounds[i].value = DEFAULT_BOUNDS[i];
+    }
+    points.points3D = [...DEFAULT_POINTS];
+
+    recalculateProjMat(leftINP.valueAsNumber, rightINP.valueAsNumber, bottomINP.valueAsNumber, topINP.valueAsNumber, nearINP.valueAsNumber, farINP.valueAsNumber);
     points.render(projMat);
     drawTable();
 }
